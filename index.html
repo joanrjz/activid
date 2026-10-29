@@ -3,277 +3,444 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Control de Actividades - Soporte Técnico</title>
-    <!-- Bootstrap CSS para un diseño profesional y responsivo -->
+    <title>Helpdesk - Control de Soporte Técnico</title>
+    <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- FontAwesome para iconos -->
+    <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- jsPDF & AutoTable -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
     <style>
-        body { background-color: #f8f9fa; }
-        .card-header { font-weight: bold; }
-        .table-responsive { max-height: 500px; overflow-y: auto; }
+        body { background-color: #f0f2f5; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .navbar-brand { font-weight: bold; }
+        .card-metric { border-left: 4px solid; }
+        .table-tickets td { vertical-align: middle; }
+        .timeline-item { border-left: 2px solid #0d6efd; padding-left: 15px; margin-bottom: 12px; position: relative; }
+        .timeline-item::before { content: ''; position: absolute; left: -6px; top: 0; width: 10px; height: 10px; border-radius: 50%; background: #0d6efd; }
     </style>
 </head>
 <body>
 
-    <div class="container py-4">
-        <!-- Título Principal -->
-        <div class="row mb-4">
-            <div class="col-12 text-center">
-                <h2><i class="fas fa-headset text-primary"></i> Control de Actividades de Soporte Técnico</h2>
-                <p class="text-muted">Gestión y seguimiento de tareas para los responsables</p>
+    <!-- Barra de Navegación Helpdesk -->
+    <nav class="navbar navbar-dark bg-dark shadow-sm">
+        <div class="container-fluid px-4">
+            <span class="navbar-brand mb-0 h1"><i class="fas fa-ticket-alt text-warning"></i> Helpdesk & Soporte Técnico</span>
+            <span class="text-white-50 small" id="liveClock"></span>
+        </div>
+    </nav>
+
+    <div class="container-fluid py-4 px-4">
+
+        <!-- Panel de Métricas / KPIs -->
+        <div class="row text-dark mb-4">
+            <div class="col-md-3">
+                <div class="card card-metric border-primary shadow-sm mb-3 bg-white">
+                    <div class="card-body py-2">
+                        <h6 class="text-muted mb-1">Tickets Totales</h6>
+                        <h3 id="metricTotal" class="text-primary mb-0">0</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card card-metric border-warning shadow-sm mb-3 bg-white">
+                    <div class="card-body py-2">
+                        <h6 class="text-muted mb-1">Abiertos / En Proceso</h6>
+                        <h3 id="metricActive" class="text-warning mb-0">0</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card card-metric border-success shadow-sm mb-3 bg-white">
+                    <div class="card-body py-2">
+                        <h6 class="text-muted mb-1">Resueltos</h6>
+                        <h3 id="metricResolved" class="text-success mb-0">0</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card shadow-sm mb-3 bg-dark text-white text-center">
+                    <div class="card-body py-2">
+                        <button class="btn btn-outline-light btn-sm w-100 mt-1" onclick="exportarReportePDF()">
+                            <i class="fas fa-file-pdf text-danger"></i> Exportar Reporte PDF
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <!-- Tarjetas de Resumen -->
-        <div class="row text-white mb-4">
-            <div class="col-md-4">
-                <div class="card bg-primary mb-3">
-                    <div class="card-body py-2">
-                        <h6 class="card-title">Total Registradas</h6>
-                        <h3 id="totalCount">0</h3>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card bg-warning mb-3">
-                    <div class="card-body py-2 text-dark">
-                        <h6 class="card-title">En Proceso / Pendientes</h6>
-                        <h3 id="pendingCount">0</h3>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card bg-success mb-3">
-                    <div class="card-body py-2">
-                        <h6 class="card-title">Finalizadas</h6>
-                        <h3 id="completedCount">0</h3>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Formulario de Captura -->
+        <!-- Formulario de Nuevo Ticket -->
         <div class="card shadow-sm mb-4">
-            <div class="card-header bg-dark text-white">
-                <i class="fas fa-plus-circle"></i> Registrar Nueva Actividad
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center" data-bs-toggle="collapse" href="#formCollapse" role="button" aria-expanded="true">
+                <span><i class="fas fa-plus-circle"></i> Nuevo Ticket de Soporte</span>
+                <i class="fas fa-chevron-down"></i>
             </div>
-            <div class="card-body">
-                <form id="supportForm">
-                    <div class="row">
-                        <!-- Solicitud -->
-                        <div class="col-md-4 mb-3">
-                            <label for="solicitante" class="form-label">¿Quién solicita?:</label>
-                            <input type="text" class="form-control" id="solicitante" required placeholder="Nombre del usuario/departamento">
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <label for="fechaSolicitud" class="form-label">Fecha de Solicitud:</label>
-                            <input type="datetime-local" class="form-control" id="fechaSolicitud" required>
-                        </div>
-                        <!-- Responsable -->
-                        <div class="col-md-4 mb-3">
-                            <label for="responsable" class="form-label">Responsable Asignado:</label>
-                            <select class="form-select" id="responsable" required>
-                                <option value="" selected disabled>Seleccione un responsable...</option>
-                                <option value="Responsable 1">Responsable 1 (Ej. Juan Pérez)</option>
-                                <option value="Responsable 2">Responsable 2 (Ej. María Gómez)</option>
-                            </select>
+            <div class="collapse show" id="formCollapse">
+                <div class="card-body bg-light">
+                    <form id="ticketForm">
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="solicitante" class="form-label fw-bold">Solicitante (Usuario / Depto):</label>
+                                <input type="text" class="form-control" id="solicitante" required placeholder="Ej. Juan Pérez - Contabilidad">
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="fechaSolicitud" class="form-label fw-bold">Fecha y Hora de Solicitud:</label>
+                                <input type="datetime-local" class="form-control" id="fechaSolicitud" required>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="categoria" class="form-label fw-bold">Categoría:</label>
+                                <select class="form-select" id="categoria" required>
+                                    <option value="" selected disabled>Seleccione categoría...</option>
+                                    <option value="Hardware">Hardware (Equipos/Periféricos)</option>
+                                    <option value="Software">Software / Sistemas</option>
+                                    <option value="Redes e Internet">Redes e Internet</option>
+                                    <option value="Accesos / Cuentas">Accesos / Contraseñas</option>
+                                    <option value="Impresoras">Impresoras</option>
+                                    <option value="Otro">Otro</option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-4 mb-3">
+                                <label for="responsable" class="form-label fw-bold">Responsable Asignado:</label>
+                                <select class="form-select" id="responsable" required>
+                                    <option value="" selected disabled>Seleccione responsable...</option>
+                                    <option value="Responsable 1">Responsable 1 (Ing. Carlos Ruiz)</option>
+                                    <option value="Responsable 2">Responsable 2 (Ing. María Torres)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="prioridad" class="form-label fw-bold">Prioridad:</label>
+                                <select class="form-select" id="prioridad" required>
+                                    <option value="Baja">Baja</option>
+                                    <option value="Media" selected>Media</option>
+                                    <option value="Alta">Alta</option>
+                                    <option value="Crítica">Crítica (Urgente)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="fechaInicio" class="form-label fw-bold">Fecha y Hora de Inicio de Atención:</label>
+                                <input type="datetime-local" class="form-control" id="fechaInicio" required>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="acciones" class="form-label fw-bold">Diagnóstico / Acciones Iniciales:</label>
+                                <textarea class="form-control" id="acciones" rows="3" required placeholder="Describa el problema inicial o acciones tomadas..."></textarea>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="observaciones" class="form-label fw-bold">Observaciones / Notas:</label>
+                                <textarea class="form-control" id="observaciones" rows="3" placeholder="Comentarios adicionales..."></textarea>
+                            </div>
                         </div>
 
-                        <!-- Fechas de Ejecución -->
-                        <div class="col-md-6 mb-3">
-                            <label for="fechaInicio" class="form-label">Fecha y Hora de Inicio:</label>
-                            <input type="datetime-local" class="form-control" id="fechaInicio" required>
+                        <div class="text-end">
+                            <button type="button" class="btn btn-secondary me-2" onclick="limpiarFormulario()"><i class="fas fa-eraser"></i> Limpiar</button>
+                            <button type="submit" class="btn btn-success"><i class="fas fa-paper-plane"></i> Crear Ticket</button>
                         </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="fechaFin" class="form-label">Fecha y Hora de Finalización:</label>
-                            <input type="datetime-local" class="form-control" id="fechaFin">
-                        </div>
-
-                        <!-- Acciones y Observaciones -->
-                        <div class="col-md-6 mb-3">
-                            <label for="acciones" class="form-label">Acciones Realizadas:</label>
-                            <textarea class="form-control" id="acciones" rows="3" required placeholder="Describa el diagnóstico o solución aplicada..."></textarea>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="observaciones" class="form-label">Observaciones:</label>
-                            <textarea class="form-control" id="observaciones" rows="3" placeholder="Comentarios adicionales, pendientes, etc..."></textarea>
-                        </div>
-                    </div>
-
-                    <div class="text-end">
-                        <button type="reset" class="btn btn-secondary me-2"><i class="fas fa-eraser"></i> Limpiar</button>
-                        <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Guardar Actividad</button>
-                    </div>
-                </form>
+                    </form>
+                </div>
             </div>
         </div>
 
-        <!-- Listado y Filtros -->
+        <!-- Panel de Filtros y Listado de Tickets -->
         <div class="card shadow-sm">
-            <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
-                <span><i class="fas fa-list"></i> Historial de Actividades</span>
-                <div class="d-flex gap-2">
-                    <select id="filtroResponsable" class="form-select form-select-sm">
-                        <option value="">Todos los responsables</option>
+            <div class="card-header bg-secondary text-white d-flex flex-wrap justify-content-between align-items-center gap-2 py-3">
+                <span><i class="fas fa-list-alt"></i> Bandeja de Tickets Activos e Historial</span>
+                
+                <div class="d-flex flex-wrap gap-2">
+                    <input type="text" id="busquedaInput" class="form-control form-control-sm" placeholder="Buscar ticket..." style="width: 180px;">
+                    <select id="filtroResponsable" class="form-select form-select-sm" style="width: 150px;">
+                        <option value="">Todos Resp.</option>
                         <option value="Responsable 1">Responsable 1</option>
                         <option value="Responsable 2">Responsable 2</option>
+                    </select>
+                    <select id="filtroEstado" class="form-select form-select-sm" style="width: 150px;">
+                        <option value="">Todos Estados</option>
+                        <option value="Abierto">Abierto</option>
+                        <option value="En Proceso">En Proceso</option>
+                        <option value="En Espera">En Espera</option>
+                        <option value="Resuelto">Resuelto</option>
                     </select>
                 </div>
             </div>
             <div class="card-body">
                 <div class="table-responsive">
-                    <table class="table table-striped table-hover align-middle" id="activitiesTable">
+                    <table class="table table-striped table-hover table-tickets align-middle">
                         <thead class="table-dark">
                             <tr>
-                                <th>Solicitante</th>
-                                <th>F. Solicitud</th>
+                                <th>ID / Solicitante</th>
+                                <th>Categoría</th>
                                 <th>Responsable</th>
-                                <th>F. Inicio</th>
-                                <th>Acciones</th>
-                                <th>F. Fin</th>
-                                <th>Observaciones</th>
+                                <th>Prioridad</th>
+                                <th>Historial de Acciones</th>
+                                <th>Fechas (Inicio / Fin)</th>
                                 <th>Estado</th>
-                                <th>Acciones</th>
+                                <th class="text-center">Acciones</th>
                             </tr>
                         </thead>
                         <tbody id="tableBody">
-                            <!-- Los registros se cargan dinámicamente vía JavaScript -->
+                            <!-- Datos dinámicos -->
                         </tbody>
                     </table>
                 </div>
             </div>
         </div>
+
     </div>
 
-    <!-- Script de lógica -->
+    <!-- MODAL DE SEGUIMIENTO Y EDICIÓN DE TICKET -->
+    <div class="modal fade" id="ticketModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-dark text-white">
+                    <h5 class="modal-title"><i class="fas fa-edit"></i> Seguimiento de Ticket #<span id="modalTicketId"></span></h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="editTicketForm">
+                        <input type="hidden" id="editId">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">Solicitante:</label>
+                                <input type="text" class="form-control" id="editSolicitante" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">Categoría:</label>
+                                <select class="form-select" id="editCategoria">
+                                    <option value="Hardware">Hardware</option>
+                                    <option value="Software">Software</option>
+                                    <option value="Redes e Internet">Redes e Internet</option>
+                                    <option value="Accesos / Cuentas">Accesos / Cuentas</option>
+                                    <option value="Impresoras">Impresoras</option>
+                                    <option value="Otro">Otro</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label fw-bold">Responsable:</label>
+                                <select class="form-select" id="editResponsable">
+                                    <option value="Responsable 1">Responsable 1</option>
+                                    <option value="Responsable 2">Responsable 2</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label fw-bold">Prioridad:</label>
+                                <select class="form-select" id="editPrioridad">
+                                    <option value="Baja">Baja</option>
+                                    <option value="Media">Media</option>
+                                    <option value="Alta">Alta</option>
+                                    <option value="Crítica">Crítica</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label fw-bold">Estado del Ticket:</label>
+                                <select class="form-select" id="editEstado">
+                                    <option value="Abierto">Abierto</option>
+                                    <option value="En Proceso">En Proceso</option>
+                                    <option value="En Espera">En Espera</option>
+                                    <option value="Resuelto">Resuelto</option>
+                                </select>
+                            </div>
+
+                            <div class="col-12 mb-3">
+                                <label class="form-label text-muted fw-bold">Línea de Tiempo / Historial de Acciones:</label>
+                                <div id="modalTimelineView" class="p-3 bg-light border rounded" style="max-height: 150px; overflow-y: auto;"></div>
+                            </div>
+
+                            <div class="col-12 mb-3">
+                                <label for="nuevaAccionBitacora" class="form-label fw-bold text-primary"><i class="fas fa-plus-circle"></i> Agregar Nueva Acción o Nota a la Bitácora:</label>
+                                <textarea class="form-control border-primary" id="nuevaAccionBitacora" rows="2" placeholder="Describa el progreso, pruebas realizadas o solución parcial..."></textarea>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">Fecha y Hora de Cierre (Opcional):</label>
+                                <input type="datetime-local" class="form-control" id="editFechaFin">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">Observaciones Generales:</label>
+                                <textarea class="form-control" id="editObservaciones" rows="2"></textarea>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="guardarCambiosTicket()"><i class="fas fa-save"></i> Guardar Actualización</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        let ticketModalInstance = null;
+
         document.addEventListener('DOMContentLoaded', () => {
-            loadActivities();
+            const modalEl = document.getElementById('ticketModal');
+            if (modalEl) {
+                ticketModalInstance = new bootstrap.Modal(modalEl);
+            }
+            
+            cargarFechasActuales();
+            cargarTickets();
+            setInterval(actualizarReloj, 1000);
 
-            // Automatizar fecha/hora actual al cargar el formulario
-            const now = new Date();
-            now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-            document.getElementById('fechaSolicitud').value = now.toISOString().slice(0,16);
-            document.getElementById('fechaInicio').value = now.toISOString().slice(0,16);
+            const form = document.getElementById('ticketForm');
+            if (form) {
+                form.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    crearTicket();
+                });
+            }
 
-            document.getElementById('supportForm').addEventListener('submit', function(e) {
-                e.preventDefault();
-                saveActivity();
-            });
-
-            document.getElementById('filtroResponsable').addEventListener('change', loadActivities);
+            document.getElementById('filtroResponsable').addEventListener('change', cargarTickets);
+            document.getElementById('filtroEstado').addEventListener('change', cargarTickets);
+            document.getElementById('busquedaInput').addEventListener('input', cargarTickets);
         });
 
-        function getActivities() {
-            return JSON.parse(localStorage.getItem('support_activities')) || [];
-        }
-
-        function saveActivity() {
-            const activity = {
-                id: Date.now(),
-                solicitante: document.getElementById('solicitante').value,
-                fechaSolicitud: document.getElementById('fechaSolicitud').value,
-                responsable: document.getElementById('responsable').value,
-                fechaInicio: document.getElementById('fechaInicio').value,
-                fechaFin: document.getElementById('fechaFin').value,
-                acciones: document.getElementById('acciones').value,
-                observaciones: document.getElementById('observaciones').value || 'Ninguna'
-            };
-
-            const activities = getActivities();
-            activities.push(activity);
-            localStorage.setItem('support_activities', JSON.stringify(activities));
-
-            document.getElementById('supportForm').reset();
-            
-            // Restablecer fechas por defecto
+        function cargarFechasActuales() {
             const now = new Date();
             now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-            document.getElementById('fechaSolicitud').value = now.toISOString().slice(0,16);
-            document.getElementById('fechaInicio').value = now.toISOString().slice(0,16);
-
-            loadActivities();
+            const fechaIso = now.toISOString().slice(0, 16);
+            
+            const fSol = document.getElementById('fechaSolicitud');
+            const fIni = document.getElementById('fechaInicio');
+            if (fSol && !fSol.value) fSol.value = fechaIso;
+            if (fIni && !fIni.value) fIni.value = fechaIso;
         }
 
-        function deleteActivity(id) {
-            if (confirm('¿Está seguro de eliminar este registro?')) {
-                let activities = getActivities();
-                activities = activities.filter(act => act.id !== id);
-                localStorage.setItem('support_activities', JSON.stringify(activities));
-                loadActivities();
+        function limpiarFormulario() {
+            document.getElementById('ticketForm').reset();
+            cargarFechasActuales();
+        }
+
+        function actualizarReloj() {
+            const clockEl = document.getElementById('liveClock');
+            if (!clockEl) return;
+            const options = { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' };
+            clockEl.innerText = new Date().toLocaleDateString('es-ES', options);
+        }
+
+        function obtenerTickets() {
+            try {
+                const data = localStorage.getItem('helpdesk_tickets_v1');
+                return data ? JSON.parse(data) : [];
+            } catch (error) {
+                console.error("Error al leer localStorage:", error);
+                return [];
             }
         }
 
-        function loadActivities() {
-            const activities = getActivities();
-            const filterValue = document.getElementById('filtroResponsable').value;
-            const tableBody = document.getElementById('tableBody');
-            
-            tableBody.innerHTML = '';
-
-            let total = activities.length;
-            let pending = 0;
-            let completed = 0;
-
-            const filtered = activities.filter(act => {
-                if (filterValue && act.responsable !== filterValue) return false;
+        function guardarTicketsEnStorage(tickets) {
+            try {
+                localStorage.setItem('helpdesk_tickets_v1', JSON.stringify(tickets));
                 return true;
-            });
+            } catch (error) {
+                console.error("Error al guardar en localStorage:", error);
+                alert("No se pudo guardar el ticket. Es posible que el almacenamiento esté bloqueado por el navegador.");
+                return false;
+            }
+        }
 
-            // Calcular contadores generales
-            activities.forEach(act => {
-                if (!act.fechaFin) pending++;
-                else completed++;
-            });
+        function crearTicket() {
+            const solicitante = document.getElementById('solicitante').value.trim();
+            const fechaSolicitud = document.getElementById('fechaSolicitud').value;
+            const categoria = document.getElementById('categoria').value;
+            const responsable = document.getElementById('responsable').value;
+            const prioridad = document.getElementById('prioridad').value;
+            const fechaInicio = document.getElementById('fechaInicio').value;
+            const acciones = document.getElementById('acciones').value.trim();
+            const observaciones = document.getElementById('observaciones').value.trim() || 'Sin observaciones';
 
-            document.getElementById('totalCount').innerText = total;
-            document.getElementById('pendingCount').innerText = pending;
-            document.getElementById('completedCount').innerText = completed;
-
-            if (filtered.length === 0) {
-                tableBody.innerHTML = `<tr><td colspan="9" class="text-center text-muted">No hay actividades registradas.</td></tr>`;
+            if (!solicitante || !fechaSolicitud || !categoria || !responsable || !fechaInicio || !acciones) {
+                alert("Por favor complete todos los campos obligatorios del formulario.");
                 return;
             }
 
-            filtered.sort((a, b) => b.id - a.id).forEach(act => {
-                const isFinished = Boolean(act.fechaFin);
-                const badge = isFinished 
-                    ? '<span class="badge bg-success">Finalizada</span>' 
-                    : '<span class="badge bg-warning text-dark">En Proceso</span>';
+            const now = new Date();
+            const timestamp = now.toLocaleDateString() + ' ' + now.toLocaleTimeString();
+            const accionInicial = `[${timestamp}] Ticket creado. Acción inicial: ${acciones}`;
+
+            const nuevoTicket = {
+                id: Date.now(),
+                solicitante: solicitante,
+                fechaSolicitud: fechaSolicitud,
+                categoria: categoria,
+                responsable: responsable,
+                prioridad: prioridad,
+                fechaInicio: fechaInicio,
+                fechaFin: '',
+                estado: 'En Proceso',
+                bitacora: [accionInicial],
+                observaciones: observaciones
+            };
+
+            const tickets = obtenerTickets();
+            tickets.push(nuevoTicket);
+            
+            if (guardarTicketsEnStorage(tickets)) {
+                limpiarFormulario();
+                cargarTickets();
+            }
+        }
+
+        function cargarTickets() {
+            const tickets = obtenerTickets();
+            const filtroResp = document.getElementById('filtroResponsable').value;
+            const filtroEstado = document.getElementById('filtroEstado').value;
+            const busqueda = document.getElementById('busquedaInput').value.toLowerCase();
+            const tableBody = document.getElementById('tableBody');
+
+            if (!tableBody) return;
+            tableBody.innerHTML = '';
+
+            let total = tickets.length;
+            let active = 0;
+            let resolved = 0;
+
+            const filtrados = tickets.filter(t => {
+                if (filtroResp && t.responsable !== filtroResp) return false;
+                if (filtroEstado && t.estado !== filtroEstado) return false;
+                if (busqueda && !t.solicitante.toLowerCase().includes(busqueda) && !t.categoria.toLowerCase().includes(busqueda) && !t.observaciones.toLowerCase().includes(busqueda)) return false;
+                return true;
+            });
+
+            tickets.forEach(t => {
+                if (t.estado === 'Resuelto') resolved++;
+                else active++;
+            });
+
+            document.getElementById('metricTotal').innerText = total;
+            document.getElementById('metricActive').innerText = active;
+            document.getElementById('metricResolved').innerText = resolved;
+
+            if (filtrados.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-4">No se encontraron tickets registrados.</td></tr>`;
+                return;
+            }
+
+            filtrados.sort((a, b) => b.id - a.id).forEach(t => {
+                let badgePrioridad = 'bg-secondary';
+                if (t.prioridad === 'Baja') badgePrioridad = 'bg-info text-dark';
+                if (t.prioridad === 'Media') badgePrioridad = 'bg-primary';
+                if (t.prioridad === 'Alta') badgePrioridad = 'bg-warning text-dark';
+                if (t.prioridad === 'Crítica') badgePrioridad = 'bg-danger';
+
+                let badgeEstado = 'bg-secondary';
+                if (t.estado === 'Abierto') badgeEstado = 'bg-secondary';
+                if (t.estado === 'En Proceso') badgeEstado = 'bg-warning text-dark';
+                if (t.estado === 'En Espera') badgeEstado = 'bg-info text-dark';
+                if (t.estado === 'Resuelto') badgeEstado = 'bg-success';
+
+                const bitacoraHtml = (t.bitacora || []).map(b => `<div class="small text-muted mb-1">• ${escapeHtml(b)}</div>`).join('');
 
                 const row = document.createElement('tr');
                 row.innerHTML = `
-                    <td><strong>${escapeHtml(act.solicitante)}</strong></td>
-                    <td><small>${formatDate(act.fechaSolicitud)}</small></td>
-                    <td><span class="badge bg-info text-dark">${escapeHtml(act.responsable)}</span></td>
-                    <td><small>${formatDate(act.fechaInicio)}</small></td>
-                    <td>${escapeHtml(act.acciones)}</td>
-                    <td><small>${act.fechaFin ? formatDate(act.fechaFin) : '<em class="text-muted">Pendiente</em>'}</small></td>
-                    <td>${escapeHtml(act.observaciones)}</td>
-                    <td>${badge}</td>
                     <td>
-                        <button class="btn btn-sm btn-danger" onclick="deleteActivity(${act.id})" title="Eliminar">
-                            <i class="fas fa-trash-alt"></i>
-                        </button>
+                        <strong class="text-primary">#${t.id.toString().slice(-5)}</strong><br>
+                        <small class="text-dark fw-bold">${escapeHtml(t.solicitante)}</small><br>
+                        <span class="text-muted" style="font-size: 0.75rem;"><i class="far fa-clock"></i> ${formatDate(t.fechaSolicitud)}</span>
                     </td>
-                `;
-                tableBody.appendChild(row);
-            });
-        }
-
-        function formatDate(dateString) {
-            if (!dateString) return '';
-            const options = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' };
-            return new Date(dateString).toLocaleString('es-MX', options);
-        }
-
-        function escapeHtml(text) {
-            const map = {
-                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
-            };
-            return text.replace(/[&<>"']/g, function(m) { return map[m]; });
-        }
-    </script>
-</body>
-</html>
+                    <td><span class="badge bg-light text-dark border">${escapeHtml(t.categoria)}</span></td>
+                    <td><span class="badge bg-dark">${escapeHtml(t.responsable)}</span></td>
+                    <td><span class="badge ${badgePrioridad}">${t.prioridad}</span></td>
+                    <td style="max-width: 300px;"><div style="max-
